@@ -3,7 +3,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
+/*
+name: Noam Sayada
+id: 216308825
+exercise - 6
+*/
 # define INT_BUFFER 128
 
 // ================================================
@@ -204,6 +208,109 @@ void printPokemonNode(PokemonNode *node)
            (node->data->CAN_EVOLVE == CAN_EVOLVE) ? "Yes" : "No");
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+OwnerNode *findOwnerByName(const char *name)
+{
+    return NULL;
+}
+
+//create a search tree for a new owner(which is the pokedox)
+//PokemonNode *createPokemonNode(const PokemonData *data);
+PokemonNode*  createPokemonNode(PokemonData *data)
+{
+    PokemonNode *node = (PokemonNode *)malloc(sizeof(PokemonNode));
+    node->data = data;
+    node->left = NULL;
+    node->right = NULL;
+    return node;
+}
+//check validity before crating the Pokedox and get the inputs
+void openPokedexMenu()
+{
+    printf("Your name: ");
+    char *name= getDynamicInput();
+    //if that name already exists, then we cannot create a new pokedox
+    if(findOwnerByName(name) != NULL)
+    {
+        printf("Owner '%s' already exists. Not creating a new Pokedex.\n", name);
+        free(name);
+        return;
+    }
+    printf("Choose starter:\n1. Bulbasaur\n2. Charmander\n3. Squirtle\nYour choice ");
+    int choice;
+    scanf("%d", &choice);
+    int id;
+    //find the chosen pokimon's id
+    switch (choice)
+    {
+    case 1:
+        id = 1;
+        break;
+    case 2:
+        id = 4;
+        break;
+    case 3:
+        id = 7;
+        break;
+        //if invalid input then return nothing, and get out of function
+    default:
+        printf("Invalid choice.\n");
+        free(name);
+        return;
+    }
+    //get all information about the pokimon on the pokedex array
+    PokemonData temp = pokedex[id-1];
+    //check if its first owner
+    OwnerNode *newOwner = (OwnerNode *)malloc(sizeof(OwnerNode));
+    if (!newOwner) {
+        printf("Memory allocation failed.\n");
+        free(name); // Free the allocated memory
+        return;
+    }
+    newOwner->ownerName = name;
+    newOwner->pokedexRoot = createPokemonNode(&temp);
+
+    newOwner->next = newOwner->prev = NULL;
+    //if no owners exist, just make owner head the newOwner
+    if (ownerHead == NULL) {
+        ownerHead = newOwner;
+        ownerHead->next = ownerHead->prev = ownerHead;
+    } else {
+        ///get the last node
+        OwnerNode *last = ownerHead->prev;
+        //put after the next node newOwner
+        last->next = newOwner;
+        //set the previous of our current owner as our one before last
+        newOwner->prev = last;
+        //set the last owner's next to the first Owner
+        newOwner->next = ownerHead;
+        //set our finrt own
+        ownerHead->prev = newOwner;
+    }
+
+    printf("New Pokedex created for %s with starter %s\n", name, temp.name);
+
+}
+
+
 // --------------------------------------------------------------
 // Display Menu
 // --------------------------------------------------------------
@@ -249,7 +356,7 @@ void displayMenu(OwnerNode *owner)
 // --------------------------------------------------------------
 // Sub-menu for existing Pokedex
 // --------------------------------------------------------------
-void enterExistingPokedexMenu()
+/*void enterExistingPokedexMenu()
 {
     // list owners
     printf("\nExisting Pokedexes:\n");
@@ -295,7 +402,7 @@ void enterExistingPokedexMenu()
         }
     } while (subChoice != 6);
 }
-
+*/
 // --------------------------------------------------------------
 // Main Menu
 // --------------------------------------------------------------
@@ -313,10 +420,11 @@ void mainMenu()
         printf("6. Print Owners in a direction X times\n");
         printf("7. Exit\n");
         choice = readIntSafe("Your choice: ");
-
         switch (choice)
         {
         case 1:
+            PokemonData data;
+            printf("New Pokedox created for %s with starter %s");
             openPokedexMenu();
             break;
         case 2:
