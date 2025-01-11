@@ -175,7 +175,7 @@ PokemonNode *searchPokemonBFS(PokemonNode *root, int id);
  * @return updated BST root
  * Why we made it: We handle special cases of a BST remove (0,1,2 children).
  */
-PokemonNode *removeNodeBST(PokemonNode *root, int id);
+//PokemonNode *removeNodeBST(PokemonNode *root, int id);
 
 /**
  * @brief Combine BFS search + BST removal to remove Pokemon by ID.

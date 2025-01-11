@@ -291,9 +291,9 @@ void openPokedexMenu()
         return;
     }
     //get all information about the pokimon on the pokedex array
-    PokemonData temp = pokedex[id-1];
+     PokemonData *temp = &pokedex[id-1];
     //create the new owner
-    OwnerNode *newOwner = createOwner(ownerName, createPokemonNode(&temp));
+    OwnerNode *newOwner = createOwner(ownerName, createPokemonNode(temp));
     //if no owners exist, just make owner head the newOwner
     if (ownerHead == NULL) {
         ownerHead = newOwner;
@@ -312,7 +312,7 @@ void openPokedexMenu()
         //set our finrt owner previous to the new last owner
         ownerHead->prev = newOwner;
     }
-    printf("New Pokedex created for %s with starter %s\n", ownerName, temp.name);
+    printf("New Pokedex created for %s with starter %s\n", ownerName, temp->name);
 
 }
 //function that will create a new owner
@@ -365,19 +365,212 @@ void enterExistingPokedexMenu() {
         owner = owner->next;
     }
     //in the loop we went one too much, therfore go to the previous one
-    char *name = owner->prev->ownerName;
-    printf("-- %s's Pokedex Menu --", name);
+    owner = owner->prev;
+
+    char *name = owner->ownerName;
+    printPokemonNode(owner->pokedexRoot);
+    //read a int again for the pokedex menu
+    int subChoice;
+    do
+    {
+        printf("\n-- %s's Pokedex Menu --\n", name);
+        printf("1. Add Pokemon\n");
+        printf("2. Display Pokedex\n");
+        printf("3. Release Pokemon (by ID)\n");
+        printf("4. Pokemon Fight!\n");
+        printf("5. Evolve Pokemon\n");
+        printf("6. Back to Main\n");
+
+        subChoice = readIntSafe("Your choice: ");
+
+        switch (subChoice)
+        {
+            case 1://add pokemon
+                addPokemon(owner);
+                break;
+            case 3: //remove pokemon
+                freePokemon(owner);
+                break;
+            case 4://pokemon fight
+                pokemonFight(owner);
+                break;
+            case 5:
+                evolvePokemon(owner);
+                break;
+            case 6:
+                printf("Back to Main Menu.\n");
+                break;
+            default:
+                printf("Invalid choice.\n");
+        }
+    } while (subChoice != 6);
 }
 
 PokemonNode *searchPokemonBFS(PokemonNode *root, int id) {
+    if (root == NULL) // we reached edge, return null
+        return NULL;
+    if (root->data->id == id) //check if root has same id
+        return root;
 
+    //go through the left trees
+    PokemonNode *left = searchPokemonBFS(root->left, id);
+    if (left != NULL) //if found, return
+        return left;
+
+    return searchPokemonBFS(root->right, id);
 }
+//this tree with place the current node in the tree
+//basically if the root is bigger, it goes right
+//if the root is smaller, it goes left, up untill it goes to NULL, which is when we place it
+PokemonNode *insertPokemonNode(PokemonNode *root, PokemonNode *newNode){
+    // this will be where it needs to be placed, so place it
+    if (root == NULL) {
+        return newNode;
+    }
 
+    // ff the new pokemon id is smaller, go to the left
+    if (newNode->data->id < root->data->id) {
+        root->left = insertPokemonNode(root->left, newNode);
+    }
+    // ff the new pokemon id is bigger, go to the right
+    else if (newNode->data->id > root->data->id) {
+        root->right = insertPokemonNode(root->right, newNode);
+    }
+
+    // return root
+    return root;
+}
 void addPokemon(OwnerNode *owner) {
-    PokemonNode *currentTree = owner->pokedexRoot;
-
+    int choice = readIntSafe("Enter ID to add: ");
+    //check if that pokemon exsits in our tree
+    if (searchPokemonBFS(owner->pokedexRoot, choice) != NULL) {
+        printf("Pokemon with ID %d is already in the Pokedex. No changes made.", choice);
+        return;
+    }
+    //else i will add it, i will sort the tree in a way in which it will go that every id bigger than the root
+    //will go to right tree, and every smaller will go to left root
+    PokemonData *temp = &pokedex[choice-1];
+    //add the pokemon to the pokedex
+    owner->pokedexRoot = insertPokemonNode(owner->pokedexRoot, createPokemonNode(temp));
+    printf("Pokemon %s (ID %d) added.", temp->name, temp->id);
 
 }
+PokemonNode *removePokemonByID(PokemonNode *root, int id) {
+    if (root == NULL)
+        return NULL;
+
+    if (id < root->data->id)
+        root->left = removePokemonByID(root->left, id);
+    else if (id > root->data->id)
+        root->right = removePokemonByID(root->right, id);
+    //if we found the id, check if right is not null and then replace the data of the root with the right tree after
+    //do for left if there is no right child
+    if (root->data->id == id) {
+        //if no parents return null
+        if (root->right == NULL && root->left == NULL) {
+            free(root);
+            return NULL;
+        }
+        if (root->right == NULL) {
+            //make the current roots have the highest after him
+            PokemonNode *toReturn = root->left;
+            free(root);
+            return toReturn;
+        }
+        if (root->left == NULL) {
+            //make the current roots have the highest after him
+            PokemonNode *toReturn = root->right;
+            free(root);
+            return toReturn;
+        }
+        //now check two children
+        PokemonNode *toReturn = root->right;
+        //in the right branch go untill we find the minimum
+        while (toReturn->left != NULL) {
+            toReturn = toReturn->left;
+        }
+        //make the current data be equal to the smallest num in the right root child
+        root->data = toReturn->data;
+        //now we need to delete the lowest tree as it it written twice
+        //no need to free because recursiion will free in later calls
+        return removePokemonByID(root, toReturn->data->id);
+    }
+
+    return root;
+}
+void freePokemon(OwnerNode *owner) {
+    //check if we even have pokemons
+    if (owner->pokedexRoot == NULL) {
+        printf("No Pokemon to release.\n");
+        return;
+    }
+    int choice = readIntSafe("Enter Pokemon ID to realease: ");
+    //check if the pokemon exists
+    if (searchPokemonBFS(owner->pokedexRoot, choice) == NULL) {
+        printf("No Pokemon with ID %d found.\n", choice);
+        return;
+    }
+    printf("Removing Pokemon %s (ID %d).\n", pokedex[choice-1].name, choice);
+    removePokemonByID(owner->pokedexRoot, choice);
+}
+
+void pokemonFight(OwnerNode *owner) {
+    if (owner->pokedexRoot == NULL) {
+        printf("Cannot evolve. Pokedex empty.\n");
+        return;
+    }
+    int firstPokemon = readIntSafe("Enter ID of the first Pokemon: ");
+    int secondPokemon = readIntSafe("Enter ID of the second Pokemon: ");
+    //check if ids exist
+    if (searchPokemonBFS(owner->pokedexRoot, firstPokemon) == NULL ||
+        searchPokemonBFS(owner->pokedexRoot, secondPokemon) == NULL) {
+        printf("One or both Pokemon IDs not found.\n");
+        return;
+    }
+    double firstPokemonScore = (pokedex[firstPokemon-1].hp * 1.2) + (pokedex[firstPokemon-1].attack * 1.5);
+    double secondPokemonScore = (pokedex[secondPokemon-1].hp * 1.2) + (pokedex[secondPokemon-1].attack * 1.5);
+    printf("Pokemon 1: %s (Score = %0.2f)\n", pokedex[firstPokemon-1].name, firstPokemonScore);
+    printf("Pokemon 2: %s (Score = %0.2f)\n", pokedex[secondPokemon-1].name, secondPokemonScore);
+    if (firstPokemonScore > secondPokemonScore)
+        printf("%s wins!\n", pokedex[firstPokemon-1].name);
+    else if (secondPokemonScore > firstPokemonScore)
+        printf("%s wins!\n", pokedex[secondPokemon-1].name);
+    else
+        printf("It's a tie!\n");
+}
+void evolvePokemon(OwnerNode *owner) {
+    if (owner->pokedexRoot == NULL) {
+        printf("Pokedex is empty.\n");
+        return;
+    }
+    int choice = readIntSafe("Enter ID of Pokemon to evolve: ");
+    //check if it exists in the tree
+    if (searchPokemonBFS(owner->pokedexRoot, choice) == NULL) {
+        printf("No Pokemon with ID %d found.", choice);
+        return;
+    }
+    //check if it can evolve
+    if (!(pokedex[choice-1].CAN_EVOLVE)) {
+        printf("%s (ID %d) cannot evolve.\n", pokedex[choice-1].name, pokedex[choice-1].id);
+        return;
+    }
+    //check if the evolved form is also in the tree
+    //if so just remove the un-evolved form
+    if (searchPokemonBFS(owner->pokedexRoot, choice+1) != NULL) {
+        printf("Evolution ID %d (%s) already in the Pokedex. Releasing %s (ID %d).", pokedex[choice].id,
+            pokedex[choice].name, pokedex[choice-1].name, pokedex[choice-1].id);
+        printf("Removing Pokemon %s (ID %d).\n", pokedex[choice-1].name, pokedex[choice-1].id);
+        removePokemonByID(owner->pokedexRoot, choice);
+    }
+    //if we dont have the evolved form, then just make the pokimon's data the id+1, as we know it doesnt exist in the
+    //tree
+    PokemonNode *toEvolve = searchPokemonBFS(owner->pokedexRoot, choice);
+    toEvolve->data = &pokedex[choice];
+    printf("Pokemon evolved from %s (ID %d) to %s (ID %d).\n", pokedex[choice-1].name, pokedex[choice-1].id,
+     pokedex[choice].name, pokedex[choice].id);
+}
+
+
 
 
 // --------------------------------------------------------------
